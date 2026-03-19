@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 
 import java.util.List;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "products")
@@ -41,12 +43,25 @@ public class Product {
     @JoinColumn(name = "product_id")
     private List<ProductImage> images;
 
+    public List<ProductImage> getImages() {
+        return images;
+    }
+
+    public void setImages(List<ProductImage> images) {
+        this.images = images;
+    }
+
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "product_id")
     private List<ProductReview> reviews;
 
+    public List<ProductReview> getReviews() {
+        return reviews;
+    }
 
-
+    public void setReviews(List<ProductReview> reviews) {
+        this.reviews = reviews;
+    }
     public long getId() {
         return id;
     }
@@ -119,7 +134,7 @@ public class Product {
         this.category = category;
     }
 
-    public Product(Long id, String name, Double price, String description,String category, Double ratings, String seller, Integer stock) {
+    public Product(Long id, String name, Double price, String description,String category, Double ratings, String seller, Integer stock, List<String> images) {
         this.id = id;
         this.name = name;
         this.price = price;
@@ -128,6 +143,7 @@ public class Product {
         this.ratings = ratings;
         this.seller = seller;
         this.stock = stock;
+        this.images = images.stream().map(url -> new ProductImage(url, this)).collect(Collectors.toList());
     }
 
     public Product() {
