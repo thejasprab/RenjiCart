@@ -71,18 +71,21 @@ public class ProductService {
         return dto;
     }
 
-    public Product getProductById(Long id){
-        return productRepository.findById(id).orElseThrow(
+    public ProductDto getProductById(Long id){
+        Product product = productRepository.findById(id).orElseThrow(
                 () -> new RuntimeException("Product not found for this id:" +id)
         );
+        return convertToDto(product);
     }
 
-    public List<Product> searchProducts(String category, Double minPrice, Double maxPrice, String keyword, Double ratings){
+    public List<ProductDto> searchProducts(String category, Double minPrice, Double maxPrice, String keyword, Double ratings){
         Specification<Product> spec = Specification.<Product>unrestricted().and(ProductSpecification.hasCategory(category))
                 .and(ProductSpecification.priceBetween(minPrice,maxPrice))
                 .and(ProductSpecification.hasNameOrDescription(keyword))
                 .and(ProductSpecification.ratingGreaterThan(ratings));
-        return productRepository.findAll(spec);
+        return productRepository.findAll(spec)
+                .stream().map(this::convertToDto)
+                .collect(Collectors.toList());
     }
 
 

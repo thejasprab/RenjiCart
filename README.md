@@ -3,35 +3,54 @@
 RenjiCart is a backend e-commerce API built with **Java**, **Spring Boot**, **Spring Data JPA**, and **MySQL**.  
 The project currently focuses on the core backend functionality needed for an online store, including product browsing, filtering, reviews, and order creation.
 
-This repository represents the backend foundation of an e-commerce system and is being developed incrementally.
-
 ---
 
-## Features Implemented
+## Features
 
-- Browse all products with pagination
-- Fetch product details by ID
-- Search products using dynamic filters:
-  - category
-  - minimum price
-  - maximum price
-  - keyword in name/description
-  - minimum rating
-- Add product reviews
-- Create orders from selected products
-- Retrieve orders using a generated reference ID
-- Automatically seed demo products on first run
-- Store product image references for static serving
+### 1) Product Catalog
+
+- Fetch all products with pagination
+- Fetch a single product by ID
+- Search products using dynamic filters
+- Return product details including pricing, seller, stock, ratings, images, and reviews
+
+### 2) Product Search & Filtering
+
+Filtering is implemented using **Spring Data JPA Specifications**, which allows flexible query composition.
+
+Supported filters:
+
+- `category`
+- `minPrice`
+- `maxPrice`
+- `keyword` (name/description)
+- `ratings`
+
+### 3) Product Reviews
+
+- Add a review for an existing product
+- Persist product reviews in the database
+- Associate reviews with products
+
+### 4) Order Management
+
+- Create an order from a list of order items
+- Validate ordered product IDs against existing products
+- Calculate item total
+- Add tax amount
+- Generate a unique order reference ID
+- Retrieve an order by reference ID
 
 ---
 
 ## Tech Stack
 
 - **Java 21**
-- **Spring Boot 3**
+- **Spring Boot 3.5.x**
 - **Spring Web**
 - **Spring Data JPA**
 - **Spring Validation**
+- **Spring Security** _(dependency present, currently not active in runtime flow)_
 - **MySQL**
 - **Maven**
 
@@ -40,78 +59,125 @@ This repository represents the backend foundation of an e-commerce system and is
 ## Project Structure
 
 ```text
-src/main/java/com/prabthejas/renjicart
-├── controller
-│   ├── OrderController.java
-│   ├── ProductController.java
-│   └── ProductReviewController.java
-├── dto
-│   ├── OrderCreated.java
-│   ├── OrderDto.java
-│   ├── OrderItemDto.java
-│   ├── ProductDto.java
-│   ├── ProductImageDto.java
-│   └── ProductReviewDto.java
-├── entity
-│   ├── Order.java
-│   ├── OrderItem.java
-│   ├── Product.java
-│   ├── ProductImage.java
-│   └── ProductReview.java
-├── repository
-│   ├── OrderRepository.java
-│   ├── ProductRepository.java
-│   └── ProductReviewRepository.java
-├── seed
-│   └── ProductSeeder.java
-├── service
-│   ├── OrderService.java
-│   └── ProductService.java
-├── spec
-│   └── ProductSpecification.java
-└── RenjicartApplication.java
+renjicart/
+├── src/
+│   ├── main/
+│   │   ├── java/com/prabthejas/renjicart/
+│   │   │   ├── controller/
+│   │   │   │   ├── OrderController.java
+│   │   │   │   ├── ProductController.java
+│   │   │   │   └── ProductReviewController.java
+│   │   │   ├── dto/
+│   │   │   ├── entity/
+│   │   │   ├── repository/
+│   │   │   ├── seed/
+│   │   │   ├── service/
+│   │   │   ├── spec/
+│   │   │   └── RenjicartApplication.java
+│   │   └── resources/
+│   │       └── application.properties
+│   └── test/
+│       └── java/com/prabthejas/renjicart/
+└── pom.xml
 ```
 
 ---
 
-## How It Works
+## Architecture Overview
 
-### Product Module
+RenjiCart currently follows a conventional Spring Boot layered design:
 
-The product module allows users to:
+- **Controller layer**: exposes REST endpoints
+- **Service layer**: contains application/business logic
+- **Repository layer**: handles persistence through Spring Data JPA
+- **Entity layer**: defines domain models mapped to MySQL tables
+- **DTO layer**: shapes API request/response payloads
+- **Specification layer**: handles dynamic product search filtering
+- **Seed layer**: populates initial demo products for local development
 
-- list all products with pagination
-- retrieve a single product by ID
-- search products using dynamic query parameters
+This structure is a good base for scaling the codebase toward more production-oriented modules such as authentication, carts, payments, admin flows, and inventory control.
 
-Filtering is implemented using **JPA Specifications**, which makes the search flexible and scalable.
+---
 
-### Review Module
+## Domain Model (Current)
 
-Users can add reviews to a product through a dedicated API endpoint.  
-Each review is linked to a product and stored in the database.
+### Product
 
-### Order Module
+Represents a catalog item with fields such as:
 
-Orders are created using a list of order items.  
-When an order is placed:
+- name
+- price
+- description
+- category
+- ratings
+- seller
+- stock
+- review count
+- images
+- reviews
 
-- products are validated using their IDs
-- total item amount is calculated
-- a fixed tax amount is added
-- a unique order reference ID is generated
-- the order is persisted in the database
+### ProductImage
+
+Represents image metadata associated with a product.
+
+### ProductReview
+
+Represents a review for a product, including comment and rating.
+
+### Order
+
+Represents a placed order with:
+
+- status
+- order items
+- item total
+- tax amount
+- total amount
+- generated reference ID
+
+### OrderItem
+
+Represents an item inside an order and links back to a product.
 
 ---
 
 ## API Endpoints
 
-### Products
+## Base URL
 
-#### Get all products
+```http
+http://localhost:8080
+```
+
+### Product APIs
+
+#### Get paginated products
 
 ```http
 GET /api/products?page=0&size=5
+```
+
+**Example response shape**
+
+```json
+{
+  "products": [
+    {
+      "id": 1,
+      "name": "Sample Product",
+      "price": 799.0,
+      "description": "Product description",
+      "category": "Electronics",
+      "ratings": 4.5,
+      "seller": "RenjiCart",
+      "stock": 10,
+      "numOfReviews": 2,
+      "images": [],
+      "reviews": []
+    }
+  ],
+  "totalProducts": 6
+}
 ```
 
 #### Get product by ID
@@ -123,33 +189,47 @@ GET /api/products/{id}
 #### Search products
 
 ```http
-GET /api/products/search?category=Electronic&minPrice=100&maxPrice=1000&keyword=iphone&ratings=4.5
+GET /api/products/search?category=Electronic&minPrice=100&maxPrice=1000&keyword=iphone&ratings=4.0
 ```
+
+**Supported query params**
+
+- `category`
+- `minPrice`
+- `maxPrice`
+- `keyword`
+- `ratings`
 
 ---
 
-### Product Reviews
+### Review APIs
 
-#### Add a review
+#### Add a product review
 
 ```http
 POST /api/products/reviews
 Content-Type: application/json
 ```
 
-Sample request body:
+**Sample request**
 
 ```json
 {
   "productId": 1,
-  "comment": "Great product",
+  "comment": "Great product for the price.",
   "rating": 4.5
 }
 ```
 
+**Sample response**
+
+```text
+Review Added
+```
+
 ---
 
-### Orders
+### Order APIs
 
 #### Create an order
 
@@ -158,7 +238,7 @@ POST /api/orders
 Content-Type: application/json
 ```
 
-Sample request body:
+**Sample request**
 
 ```json
 {
@@ -174,11 +254,11 @@ Sample request body:
 }
 ```
 
-Sample response:
+**Sample response**
 
 ```json
 {
-  "referenceId": "generated-uuid-value"
+  "referenceId": "e7b5f2af-4f44-4a84-9e61-5b2b9d3d40ad"
 }
 ```
 
@@ -190,71 +270,67 @@ GET /api/orders/{referenceId}
 
 ---
 
-## Database Configuration
-
-The application is configured to use MySQL.
-
-Current configuration in `application.properties`:
-
-```properties
-spring.application.name=renjicart
-spring.jpa.hibernate.ddl-auto=update
-spring.datasource.url=jdbc:mysql://localhost:3306/renjicart
-spring.datasource.username=root
-spring.datasource.password=password
-spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
-spring.jpa.show-sql=true
-spring.web.resources.static-locations=file:uploads/
-```
-
-Make sure you create a MySQL database named:
-
-```sql
-CREATE DATABASE renjicart;
-```
-
-You may also need to update the username and password based on your local MySQL setup.
-
----
-
-## Running the Project Locally
+## Local Setup
 
 ### Prerequisites
 
+Make sure you have the following installed:
+
 - Java 21
 - Maven
-- MySQL
+- MySQL 8+
 
-### Steps
-
-1. Clone the repository:
+### 1) Clone the repository
 
 ```bash
 git clone https://github.com/thejasprab/RenjiCart.git
 cd RenjiCart/renjicart
 ```
 
-2. Configure MySQL in `src/main/resources/application.properties`
-
-3. Create the database:
+### 2) Create the database
 
 ```sql
 CREATE DATABASE renjicart;
 ```
 
-4. Run the application:
+### 3) Configure application properties
+
+Update `src/main/resources/application.properties` with your local MySQL credentials.
+
+Example configuration:
+
+```properties
+spring.application.name=renjicart
+spring.jpa.hibernate.ddl-auto=update
+spring.datasource.url=jdbc:mysql://localhost:3306/renjicart
+spring.datasource.username=root
+spring.datasource.password=your_password
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.jpa.show-sql=true
+spring.web.resources.static-locations=file:uploads/
+```
+
+### 4) Run the application
+
+Using Maven wrapper:
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-Or on Windows:
+On Windows:
 
 ```bash
 mvnw.cmd spring-boot:run
 ```
 
-The application will start on:
+Or using Maven directly:
+
+```bash
+mvn spring-boot:run
+```
+
+The API will typically start on:
 
 ```text
 http://localhost:8080
@@ -262,82 +338,50 @@ http://localhost:8080
 
 ---
 
-## Demo Data
+## Future Features / Next-Level Improvements
 
-On startup, the application seeds demo products if the products table is empty.
+This section is intended to be maintained as the project evolves.
 
-The seeded catalog currently includes sample electronics such as:
+### Near-Term Improvements
 
-- iPhone
-- Samsung Galaxy
-- Pixel
-- MacBook
-- Dell XPS
-- Sony headphones
-- smartwatches
-- accessories
+- Add global exception handling with clear API error responses
+- Add request validation annotations and validation-friendly response bodies
+- Improve DTO design and response consistency
+- Add Swagger / OpenAPI documentation
+- Add proper logging strategy
+- Add environment-specific configuration
+- Add test coverage for controllers and services
 
-This makes it easier to test product listing, search, and order creation without manually inserting records.
+### Commerce Features
 
----
+- Persistent shopping cart
+- User registration and login
+- Role-based access control for admin/customer flows
+- Admin APIs for product CRUD
+- Inventory deduction and stock validation on order placement
+- Address and shipping details
+- Coupon/discount support
+- Order history per user
+- Order status transitions
 
-## Current Status
+### Production-Oriented Enhancements
 
-This project is currently in progress and represents the **backend foundation** of a larger e-commerce platform.
+- JWT-based authentication and authorization
+- Payment gateway integration
+- Dockerized local development and deployment
+- CI/CD pipeline
+- Centralized configuration and secrets handling
+- Better database migration strategy (Flyway or Liquibase)
+- Monitoring and health checks
+- Caching for catalog reads
+- API versioning
 
-### Implemented
+### Possible Frontend / Full-Stack Expansion
 
-- product APIs
-- search/filter logic
-- review creation
-- order creation and retrieval
-- MySQL persistence
-- demo seeding
-
-### Not Yet Implemented / Future Work
-
-- authentication and authorization
-- cart management
-- user accounts
-- admin product management
-- update/delete product endpoints
-- payment integration
-- inventory checks during order placement
-- exception handling with proper error responses
-- Swagger / API documentation
-- Docker deployment
-- frontend integration
-
----
-
-## Notes
-
-- `spring-security` is included as a dependency, but default security is currently disabled in the application:
-  ```java
-  @SpringBootApplication(exclude = {SecurityAutoConfiguration.class})
-  ```
-- The current order tax amount is fixed in code.
-- Review submission currently stores reviews, but product rating aggregation and review count updates can be improved further.
-- This project is designed as a learning and portfolio project to demonstrate backend engineering concepts using Spring Boot.
+- React-based storefront
+- Product detail page and catalog UI
+- Cart and checkout flow
+- User account dashboard
+- Admin dashboard
 
 ---
-
-## Learning Goals Behind This Project
-
-This project was built to practice and demonstrate:
-
-- REST API design
-- layered backend architecture
-- DTO usage
-- entity relationships in JPA
-- pagination and filtering
-- order flow modeling
-- database integration with MySQL
-
----
-
-## Author
-
-**Thejas Prabakaran**
-
-If you found this project interesting, feel free to explore the codebase and follow its progress.

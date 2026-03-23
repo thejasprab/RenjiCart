@@ -23,8 +23,7 @@ public class OrderController {
 
     @GetMapping("/{referenceId}")
     public ResponseEntity<?> getOrder(@PathVariable String referenceId){
-        Order order = orderService.getOrder(referenceId);
-        return ResponseEntity.ok().body(order);
+        return ResponseEntity.ok().body(orderService.getOrder(referenceId));
 
     }
 }

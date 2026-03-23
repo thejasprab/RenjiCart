@@ -12,7 +12,9 @@ import org.aspectj.weaver.ast.Or;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
@@ -51,7 +53,24 @@ public class OrderService {
         return new OrderCreated(refId);
     }
 
-    public Order getOrder(String referenceId){
-        return orderRepository.findByReferenceId(referenceId).orElseThrow(()-> new RuntimeException("No Order Found with this referenceId"));
+    public OrderDto getOrder(String referenceId){
+        Order order = orderRepository.findByReferenceId(referenceId).orElseThrow(()-> new RuntimeException("No Order Found with this referenceId"));
+        return convertToOrderDto(order);
+    }
+
+    public OrderDto convertToOrderDto(Order order){
+        OrderDto orderDto = new OrderDto();
+        List<OrderItemDto> orderItemDtos = order.getOrderItems()
+                .stream().map(orderItem -> {
+                    OrderItemDto orderItemDto = new OrderItemDto();
+                    orderItemDto.setName(orderItem.getName());
+                    orderItemDto.setPrice(orderItem.getPrice());
+                    orderItemDto.setImage(orderItem.getImage());
+                    orderItemDto.setQuantity(orderItem.getQuantity());
+                    orderItemDto.setProductId(orderItem.getProduct().getId());
+                    return orderItemDto;
+                }).collect(Collectors.toList());
+        orderDto.setOrderItems(orderItemDtos);
+        return orderDto;
     }
 }
